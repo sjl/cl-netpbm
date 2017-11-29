@@ -6,7 +6,7 @@
 
   :license "MIT/X11"
 
-  :depends-on ()
+  :depends-on (:flexi-streams)
 
   :serial t
   :components ((:module "vendor" :serial t
