@@ -6,8 +6,8 @@
   (read-char stream nil nil))
 
 (defun skip-whitespace (stream)
-  (when (eql #\# (peek-char t stream nil nil))
-    (skip-comment stream)))
+  (loop :while (eql #\# (peek-char t stream nil nil))
+        :do (skip-comment stream)))
 
 (defun peek (stream)
   (peek-char nil stream nil nil))
