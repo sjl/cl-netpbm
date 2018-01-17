@@ -67,14 +67,14 @@
   (let* ((width (read-number stream))
          (height (read-number stream))
          (bit-depth (if (eql :pbm format) 1 (read-number stream)))
-         (data (make-array (list height width)
+         (data (make-array (list width height)
                  :element-type (pixel-type format bit-depth)))
          (reader (if binary? #'read-byte #'read-number)))
     (when binary?
       (read-char stream)) ; chomp last newline before bytes
-    (dotimes (row height)
-      (dotimes (col width)
-        (setf (aref data row col)
+    (dotimes (y height)
+      (dotimes (x width)
+        (setf (aref data x y)
               (ecase format
                 (:pbm (funcall reader stream))
                 (:pgm (funcall reader stream))
@@ -89,12 +89,12 @@
 (defun write% (data stream format binary? maximum-value)
   (let ((stream (flexi-streams:make-flexi-stream stream :external-format :ascii))
         (writer (if binary? #'write-byte #'write-number)))
-    (destructuring-bind (height width) (array-dimensions data)
+    (destructuring-bind (width height) (array-dimensions data)
       (format stream "P~D~%~D ~D~%~D~%"
               (magic-byte format binary?) width height maximum-value)
-      (dotimes (row height)
-        (dotimes (col width)
-          (let ((pixel (aref data row col)))
+      (dotimes (y height)
+        (dotimes (x width)
+          (let ((pixel (aref data x y)))
             (ecase format
               (:pbm (funcall writer pixel stream))
               (:pgm (funcall writer pixel stream))
