@@ -2,4 +2,8 @@
   (:use
     :cl
     :trivial-ppm.quickutils)
-  (:export))
+  (:export
+    :read-from-file
+    :read-from-stream
+    :write-to-file
+    :write-to-stream))
