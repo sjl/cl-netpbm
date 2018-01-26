@@ -3,4 +3,4 @@ lisp.prof
 scratch.lisp
 *.log
 docs/build
-data
+images

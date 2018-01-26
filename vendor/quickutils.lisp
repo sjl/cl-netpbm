@@ -2,7 +2,7 @@
 ;;;; See http://quickutil.org for details.
 
 ;;;; To regenerate:
-;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY) :ensure-package T :package "TRIVIAL-PPM.QUICKUTILS")
+;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :SYMB :WITH-GENSYMS :TRANSPOSE) :ensure-package T :package "TRIVIAL-PPM.QUICKUTILS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "TRIVIAL-PPM.QUICKUTILS")
@@ -14,7 +14,8 @@
 
 (when (boundp '*utilities*)
   (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION
-                                         :CURRY))))
+                                         :CURRY :MKSTR :SYMB :STRING-DESIGNATOR
+                                         :WITH-GENSYMS :TRANSPOSE))))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-gensym-list (length &optional (x "G"))
     "Returns a list of `length` gensyms, each generated as if with a call to `make-gensym`,
@@ -58,7 +59,73 @@ it is called with to `function`."
          (lambda (&rest more)
            (apply ,fun ,@curries more)))))
   
+
+  (defun mkstr (&rest args)
+    "Receives any number of objects (string, symbol, keyword, char, number), extracts all printed representations, and concatenates them all into one string.
+
+Extracted from _On Lisp_, chapter 4."
+    (with-output-to-string (s)
+      (dolist (a args) (princ a s))))
+  
+
+  (defun symb (&rest args)
+    "Receives any number of objects, concatenates all into one string with `#'mkstr` and converts them to symbol.
+
+Extracted from _On Lisp_, chapter 4.
+
+See also: `symbolicate`"
+    (values (intern (apply #'mkstr args))))
+  
+
+  (deftype string-designator ()
+    "A string designator type. A string designator is either a string, a symbol,
+or a character."
+    `(or symbol string character))
+  
+
+  (defmacro with-gensyms (names &body forms)
+    "Binds each variable named by a symbol in `names` to a unique symbol around
+`forms`. Each of `names` must either be either a symbol, or of the form:
+
+    (symbol string-designator)
+
+Bare symbols appearing in `names` are equivalent to:
+
+    (symbol symbol)
+
+The string-designator is used as the argument to `gensym` when constructing the
+unique symbol the named variable will be bound to."
+    `(let ,(mapcar (lambda (name)
+                     (multiple-value-bind (symbol string)
+                         (etypecase name
+                           (symbol
+                            (values name (symbol-name name)))
+                           ((cons symbol (cons string-designator null))
+                            (values (first name) (string (second name)))))
+                       `(,symbol (gensym ,string))))
+            names)
+       ,@forms))
+
+  (defmacro with-unique-names (names &body forms)
+    "Binds each variable named by a symbol in `names` to a unique symbol around
+`forms`. Each of `names` must either be either a symbol, or of the form:
+
+    (symbol string-designator)
+
+Bare symbols appearing in `names` are equivalent to:
+
+    (symbol symbol)
+
+The string-designator is used as the argument to `gensym` when constructing the
+unique symbol the named variable will be bound to."
+    `(with-gensyms ,names ,@forms))
+  
+
+  (defun transpose (lists)
+    "Analog to matrix transpose for a list of lists given by `lists`."
+    (apply #'mapcar #'list lists))
+  
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (export '(curry)))
+  (export '(curry symb with-gensyms with-unique-names transpose)))
 
 ;;;; END OF quickutils.lisp ;;;;
