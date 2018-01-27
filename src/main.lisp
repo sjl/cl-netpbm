@@ -78,7 +78,7 @@
       (dotimes (x width)
         (setf (aref data x y)
               (ecase format
-                (:pbm (funcall reader stream))
+                (:pbm (- 1 (funcall reader stream)))
                 (:pgm (funcall reader stream))
                 (:ppm (make-array 3
                         :initial-contents (list (funcall reader stream)
@@ -98,7 +98,7 @@
         (dotimes (x width)
           (let ((pixel (aref data x y)))
             (ecase format
-              (:pbm (funcall writer pixel stream))
+              (:pbm (funcall writer (- 1 pixel) stream))
               (:pgm (funcall writer pixel stream))
               (:ppm (progn (funcall writer (aref pixel 0) stream)
                            (funcall writer (aref pixel 1) stream)
