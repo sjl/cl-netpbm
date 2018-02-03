@@ -1,25 +1,92 @@
 (in-package :trivial-ppm)
 
+;;;; Peekable Streams ---------------------------------------------------------
+(defstruct (peekable-stream (:conc-name "")
+                            (:constructor make-peekable-stream (s)))
+  (p nil :type (or null (unsigned-byte 8)))
+  (s (error "Required") :type stream))
+
+(defun ps-actually-read-byte (stream &optional eof-error-p)
+  (read-byte (s stream) eof-error-p nil))
+
+(defun ps-read-byte (stream &optional eof-error-p)
+  (if (p stream)
+    (prog1 (p stream)
+      (setf (p stream) nil))
+    (ps-actually-read-byte stream eof-error-p)))
+
+(defun ps-peek-byte (stream)
+  (when (null (p stream))
+    (setf (p stream) (ps-actually-read-byte stream)))
+  (p stream))
+
+(defun ps-unread-byte (stream byte)
+  (assert (null (p stream)))
+  (setf (p stream) byte)
+  (values))
+
+
 ;;;; Utils --------------------------------------------------------------------
-(defun skip-comment (stream)
-  (peek-char #\newline stream nil nil)
-  (read-char stream nil nil))
+;;; The standard doesn't mandate that (char-code #\Space) must be equivalent to
+;;; the ASCII code... if we're gonna do this thing, let's do it right.
+(defconstant +space+ 32)
+(defconstant +tab+ 9)
+(defconstant +line-feed+ 10)
+(defconstant +vertical-tab+ 11)
+(defconstant +form-feed+ 12)
+(defconstant +carriage-return+ 13)
+
+(defconstant +comment-char+ 35)
+
+
+(defun white-space-p (byte)
+  (if (member byte (list +space+ +form-feed+
+                         +tab+ +vertical-tab+
+                         +line-feed+ +carriage-return+))
+    t
+    nil))
+
+(defun line-terminator-p (byte)
+  (if (member byte (list +line-feed+ +carriage-return+))
+    t
+    nil))
+
+
+(defun skip-comment-body (stream)
+  (loop :until (line-terminator-p (ps-read-byte stream t))))
 
 (defun skip-whitespace (stream)
-  (loop :while (eql #\# (peek-char t stream nil nil))
-        :do (skip-comment stream)))
+  (loop :for byte = (ps-read-byte stream)
+        :while (white-space-p byte)
+        :finally (ps-unread-byte stream byte)))
 
 
-(defun read-number (stream)
-  "Read the next ASCII-encoded number from `stream`."
+(defun error-junk (section byte)
+  (error "Junk byte in ~A data: ~D (~S)" section byte (code-char byte)))
+
+(defun read-raster-number (stream)
+  "Read the next ASCII-encoded number from `stream` (does not allow comments)."
   (skip-whitespace stream)
-  (loop :with i = 0
-        :for ch = (peek-char nil stream nil nil)
-        :while ch
-        :for digit = (digit-char-p ch)
-        :while digit
-        :do (read-char stream)
-        :do (setf i (+ (* i 10) digit))
+  (loop :with i = nil
+        :for byte = (ps-read-byte stream)
+        :for digit = (when byte (digit-char-p (code-char byte)))
+        :unless (or (null byte) digit (white-space-p byte))
+        :do (error-junk "raster" byte)
+        :while (and byte digit)
+        :do (setf i (+ (* (or i 0) 10) digit))
+        :finally (return i)))
+
+(defun read-header-number (stream)
+  "Read the next ASCII-encoded number from `stream` (allows comments)."
+  (skip-whitespace stream)
+  (loop :with i = nil
+        :for byte = (ps-read-byte stream)
+        :for digit = (when byte (digit-char-p (code-char byte)))
+        :while byte
+        :while (cond ((= byte +comment-char+) (skip-comment-body stream) t)
+                     (digit (setf i (+ (* (or i 0) 10) digit)) t)
+                     ((white-space-p byte) nil)
+                     (t (error-junk "header" byte)))
         :finally (return i)))
 
 (defun write-number (value stream)
@@ -66,12 +133,12 @@
 
 ;;;; PPM ----------------------------------------------------------------------
 (defun read% (stream format binary?)
-  (let* ((width (read-number stream))
-         (height (read-number stream))
-         (bit-depth (if (eql :pbm format) 1 (read-number stream)))
+  (let* ((width (read-header-number stream))
+         (height (read-header-number stream))
+         (bit-depth (if (eql :pbm format) 1 (read-header-number stream)))
          (data (make-array (list width height)
                  :element-type (pixel-type format bit-depth)))
-         (reader (if binary? #'read-byte #'read-number)))
+         (reader (if binary? #'read-byte #'read-raster-number)))
     (when binary?
       (read-char stream)) ; chomp last newline before bytes
     (dotimes (y height)
@@ -86,7 +153,6 @@
                                                 (funcall reader stream))
                         :element-type 'fixnum))))))
     (values data format bit-depth)))
-
 
 (defun write% (data stream format binary? maximum-value)
   (let ((stream (flexi-streams:make-flexi-stream stream :external-format :ascii))
@@ -128,8 +194,7 @@
   "
   (multiple-value-bind (format binary?)
       (file-format (read-magic-byte stream))
-    (read% (flexi-streams:make-flexi-stream stream :external-format :ascii)
-           format binary?)))
+    (read% (make-peekable-stream stream) format binary?)))
 
 (defun write-to-stream (stream data &key
                         (format :ppm)
