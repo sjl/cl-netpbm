@@ -7,7 +7,7 @@
   :license "MIT/X11"
   :version "0.0.1"
 
-  :depends-on (:flexi-streams)
+  :depends-on ()
 
   :in-order-to ((asdf:test-op (asdf:test-op :trivial-ppm/test)))
 

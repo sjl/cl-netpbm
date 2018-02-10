@@ -27,8 +27,6 @@
 
 
 ;;;; Utils --------------------------------------------------------------------
-;;; The standard doesn't mandate that (char-code #\Space) must be equivalent to
-;;; the ASCII code... if we're gonna do this thing, let's do it right.
 (defconstant +space+ 32)
 (defconstant +tab+ 9)
 (defconstant +line-feed+ 10)
@@ -89,15 +87,34 @@
                      (t (error-junk "header" byte)))
         :finally (return i)))
 
-(defun write-number (value stream)
-  "Write `value` to stream as an ASCII-encoded number."
-  (format stream "~D " value))
-
-
 (defun read-magic-byte (stream)
   "Read the initial `P#` from `stream`, returning the magic `#` character."
   (assert (eql (read-byte stream) (char-code #\P)))
   (code-char (read-byte stream)))
+
+
+(defun write-string-as-bytes (string stream)
+  (loop :for ch :across string
+        :do (write-byte (char-code ch) stream)))
+
+(defun format-to-stream (stream &rest format-args)
+  (write-string-as-bytes (apply #'format nil format-args) stream))
+
+(defmacro check-number (place maximum-value)
+  `(assert (typep ,place `(integer 0 ,maximum-value)) (,place)
+     "Cannot write sample value ~D to PPM with maximum value of ~D"
+     ,place
+     ,maximum-value))
+
+(defun write-number-ascii (maximum-value value stream)
+  "Write `value` to stream as an ASCII-encoded number, with sanity check."
+  (check-number value maximum-value)
+  (format-to-stream stream "~D " value))
+
+(defun write-number-binary (maximum-value value stream)
+  "Write `value` to stream as a binary value, with sanity check."
+  (check-number value maximum-value)
+  (write-byte value stream))
 
 
 (defun file-format (magic-byte)
@@ -155,11 +172,12 @@
     (values data format bit-depth)))
 
 (defun write% (data stream format binary? maximum-value)
-  (let ((stream (flexi-streams:make-flexi-stream stream :external-format :ascii))
-        (writer (if binary? #'write-byte #'write-number)))
+  (let ((writer (if binary?
+                  (curry #'write-number-binary maximum-value)
+                  (curry #'write-number-ascii maximum-value))))
     (destructuring-bind (width height) (array-dimensions data)
-      (format stream "P~D~%~D ~D~%~D~%"
-              (magic-byte format binary?) width height maximum-value)
+      (format-to-stream stream "P~D~%~D ~D~%~D~%"
+                        (magic-byte format binary?) width height maximum-value)
       (dotimes (y height)
         (dotimes (x width)
           (let ((pixel (aref data x y)))
@@ -169,7 +187,7 @@
               (:ppm (progn (funcall writer (aref pixel 0) stream)
                            (funcall writer (aref pixel 1) stream)
                            (funcall writer (aref pixel 2) stream))))))
-        (unless binary? (terpri stream))))))
+        (unless binary? (write-byte +line-feed+ stream))))))
 
 
 ;;;; API ----------------------------------------------------------------------
@@ -183,8 +201,8 @@
   image file format:
 
   * PBM: `bit`
-  * PGM: `(integer 0 bit-depth)`
-  * PPM: `(simple-array (integer 0 bit-depth) (3))`
+  * PGM: `(integer 0 maximum-value)`
+  * PPM: `(simple-array (integer 0 maximum-value) (3))`
 
   Two other values are returned:
 
@@ -199,7 +217,7 @@
 (defun write-to-stream (stream data &key
                         (format :ppm)
                         (encoding :binary)
-                        (bit-depth (ecase format (:pbm 1) ((:pgm :ppm) 255))))
+                        (maximum-value (ecase format (:pbm 1) ((:pgm :ppm) 255))))
   "Write a PPM image array `data` to `stream`.
 
   Nothing is returned.
@@ -208,23 +226,23 @@
 
   `encoding` must be one of `:binary`, `:ascii`.
 
-  `bit-depth` must be the desired bit depth of the image (the maximum value any
-  particular pixel can have).  For PBM images it must be `1`.
+  `maximum-value` must be the desired bit depth of the image (the maximum value
+  any particular pixel can have).  For PBM images it must be `1`.
 
   For PBM and PGM images, `data` must be a two dimensional array of integers
-  between `0` and `bit-depth` inclusive.
+  between `0` and `maximum-value` inclusive.
 
   For PPM images, `data` must be a two dimensional array of pixels, each of
-  which must be a 3 element vector of integers between `0` and `bit-depth`
+  which must be a 3 element vector of integers between `0` and `maximum-value`
   inclusive.
 
   "
   (check-type format (member :ppm :pgm :pbm))
   (check-type encoding (member :binary :ascii))
   (if (eql format :pbm)
-    (check-type bit-depth (eql 1))
-    (check-type bit-depth (integer 1 *)))
-  (write% data stream format (eql :binary encoding) bit-depth)
+    (check-type maximum-value (eql 1))
+    (check-type maximum-value (integer 1 *)))
+  (write% data stream format (eql :binary encoding) maximum-value)
   (values))
 
 
@@ -236,8 +254,8 @@
   image file format:
 
   * PBM: `bit`
-  * PGM: `(integer 0 bit-depth)`
-  * PPM: `(simple-array (integer 0 bit-depth) (3))`
+  * PGM: `(integer 0 maximum-value)`
+  * PPM: `(simple-array (integer 0 maximum-value) (3))`
 
   Two other values are returned:
 
@@ -252,7 +270,7 @@
                       (if-exists nil if-exists-given)
                       (format :ppm)
                       (encoding :binary)
-                      (bit-depth (ecase format (:pbm 1) ((:pgm :ppm) 255))))
+                      (maximum-value (ecase format (:pbm 1) ((:pgm :ppm) 255))))
   "Write a PPM image array `data` to a file at `path`.
 
   Nothing is returned.
@@ -261,14 +279,14 @@
 
   `encoding` must be one of `:binary`, `:ascii`.
 
-  `bit-depth` must be the desired bit depth of the image (the maximum value any
-  particular pixel can have).  For PBM images it must be `1`.
+  `maximum-value` must be the desired bit depth of the image (the maximum value
+  any particular pixel can have).  For PBM images it must be `1`.
 
   For PBM and PGM images, `data` must be a two dimensional array of integers
-  between `0` and `bit-depth` inclusive.
+  between `0` and `maximum-value` inclusive.
 
   For PPM images, `data` must be a two dimensional array of pixels, each of
-  which must be a 3 element vector of integers between `0` and `bit-depth`
+  which must be a 3 element vector of integers between `0` and `maximum-value`
   inclusive.
 
   "
@@ -276,7 +294,7 @@
            (write-to-stream stream data
                             :format format
                             :encoding encoding
-                            :bit-depth bit-depth)))
+                            :maximum-value maximum-value)))
     (if if-exists-given
       (with-open-file (s path :direction :output :if-exists if-exists :element-type '(unsigned-byte 8))
         (write-it s))
