@@ -1,8 +1,8 @@
-(defpackage :trivial-ppm/test
+(defpackage :netpbm/test
   (:use
     :cl
     :1am
-    :trivial-ppm
-    :trivial-ppm.quickutils)
+    :netpbm
+    :netpbm.quickutils)
   (:export
     :run-tests))

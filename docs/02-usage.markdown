@@ -1,7 +1,6 @@
 Usage
 =====
 
-trivial-ppm
 
 [TOC]
 

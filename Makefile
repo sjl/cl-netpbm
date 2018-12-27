@@ -41,6 +41,6 @@ docs: docs/build/index.html
 
 pubdocs: docs
 	hg -R ~/src/sjl.bitbucket.org pull -u
-	rsync --delete -a ./docs/build/ ~/src/sjl.bitbucket.org/trivial-ppm
-	hg -R ~/src/sjl.bitbucket.org commit -Am 'trivial-ppm: Update site.'
+	rsync --delete -a ./docs/build/ ~/src/sjl.bitbucket.org/cl-netpbm
+	hg -R ~/src/sjl.bitbucket.org commit -Am 'cl-netpbm: Update site.'
 	hg -R ~/src/sjl.bitbucket.org push

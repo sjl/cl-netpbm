@@ -1,6 +1,6 @@
 # API Reference
 
-The following is a list of all user-facing parts of trivial-ppm.
+The following is a list of all user-facing parts of cl-netpbm.
 
 If there are backwards-incompatible changes to anything listed here, they will
 be noted in the changelog and the author will feel bad.
@@ -10,7 +10,7 @@ don't touch it.
 
 [TOC]
 
-## Package `TRIVIAL-PPM`
+## Package `NETPBM`
 
 ### `READ-FROM-FILE` (function)
 
@@ -39,7 +39,8 @@ Read a PPM image file from `path`, returning an array of pixels and more.
 
 Read a PPM image file from `stream`, returning an array of pixels and more.
 
-  `stream` must be a binary input stream.
+  `stream` must be a binary input stream, specifically of `(unsigned-byte 8)`s
+  unless you *really* know what you're doing.
 
   The primary return value will be a 2D array with dimensions `(width height)`.
   Each element of the array will be a single pixel whose type depends on the
@@ -89,6 +90,9 @@ Write a PPM image array `data` to a file at `path`.
 Write a PPM image array `data` to `stream`.
 
   Nothing is returned.
+
+  `stream` must be a binary output stream, specifically of `(unsigned-byte 8)`s
+  unless you *really* know what you're doing.
 
   `format` must be one of `:pbm`, `:pgm`, `:ppm`.
 

@@ -1,4 +1,4 @@
-(in-package :trivial-ppm)
+(in-package :netpbm)
 
 ;;;; Peekable Streams ---------------------------------------------------------
 (defstruct (peekable-stream (:conc-name nil)
@@ -6,18 +6,16 @@
   (p nil :type (or null (unsigned-byte 8)))
   (s (error "Required") :type stream))
 
-(defun actually-read-byte (stream &optional eof-error-p)
-  (cl:read-byte (s stream) eof-error-p nil))
 
 (defun read-byte (stream &optional (eof-error-p t))
   (if (p stream)
     (prog1 (p stream)
       (setf (p stream) nil))
-    (actually-read-byte stream eof-error-p)))
+    (cl:read-byte (s stream) eof-error-p nil)))
 
 (defun peek-byte (stream)
   (when (null (p stream))
-    (setf (p stream) (actually-read-byte stream)))
+    (setf (p stream) (cl:read-byte (s stream))))
   (p stream))
 
 (defun unread-byte (stream byte)
@@ -26,7 +24,7 @@
   (values))
 
 
-;;;; Utils --------------------------------------------------------------------
+;;;; Implementation -----------------------------------------------------------
 ;;; TODO: We're explicit about ASCII values here, but other places in the code
 ;;; rely on char-code and friends returning ASCII.  Eventually we should
 ;;; probably fix that.
@@ -112,19 +110,22 @@
 
 (defmacro check-number (place maximum-value)
   `(assert (typep ,place `(integer 0 ,maximum-value)) (,place)
-     "Cannot write sample value ~D to P*M with maximum value of ~D"
+     "Cannot write sample value ~D to Netpbm file with maximum value of ~D"
      ,place
      ,maximum-value))
 
-(defun write-number-ascii (maximum-value value stream)
+(defun write-number-ascii (value stream maximum-value)
   "Write `value` to stream as an ASCII-encoded number, with sanity check."
   (check-number value maximum-value)
   (format-to-stream stream "~D " value))
 
-(defun write-number-binary (maximum-value value stream)
-  "Write `value` to stream as a binary value, with sanity check."
+(defun write-number-binary (value stream maximum-value)
+  "Write `value` to `stream` as a binary value, with sanity check."
   (check-number value maximum-value)
   (write-byte value stream))
+
+(defun write-line-feed (stream)
+  (write-byte +line-feed+ stream))
 
 
 (defun file-format (magic-byte)
@@ -158,77 +159,146 @@
     (:ppm `(simple-array (integer 0 ,bit-depth) (3)))))
 
 
-;;;; PPM ----------------------------------------------------------------------
 (defun bits (byte)
   (loop :for i :from 7 :downto 0
         :collect (ldb (byte 1 i) byte)))
 
-(defun read% (stream format binary?)
-  (let ((buffer nil))
-    (flet ((read-bit-binary (stream)
-             (when (null buffer)
-               (setf buffer (bits (read-byte stream))))
-             (pop buffer))
-           (flush-buffer ()
-             (setf buffer nil)))
-      (let* ((width (read-header-number stream))
-             (height (read-header-number stream))
-             (bit-depth (if (eql :pbm format) 1 (read-header-number stream)))
-             (data (make-array (list width height)
-                     :element-type (pixel-type format bit-depth)))
-             (reader (if binary?
-                       (if (eql format :pbm)
-                         #'read-bit-binary
-                         #'read-byte)
-                       #'read-raster-number)))
-        (dotimes (y height)
-          (dotimes (x width)
-            (setf (aref data x y)
-                  (ecase format
-                    (:pbm (- 1 (funcall reader stream)))
-                    (:pgm (funcall reader stream))
-                    (:ppm (make-array 3
-                            :initial-contents (list (funcall reader stream)
-                                                    (funcall reader stream)
-                                                    (funcall reader stream))
-                            :element-type 'fixnum)))))
-          (flush-buffer))
-        (values data format bit-depth)))))
+(defun make-color (r g b)
+  (make-array 3
+    :initial-contents (list r g b)
+    :element-type 'fixnum))
 
-(defun write% (data stream format binary? maximum-value)
-  (let ((buffer 0)
-        (buffer-length 0))
-    (labels ((write-bit-binary (bit stream)
-               (declare (ignore stream))
-               (setf buffer (+ (ash buffer 1) bit))
-               (incf buffer-length)
-               (when (= buffer-length 8)
-                 (flush-buffer)))
-             (flush-buffer ()
-               (when (plusp buffer-length)
-                 (write-byte (ash buffer (- 8 buffer-length)) stream)
-                 (setf buffer 0 buffer-length 0))))
-      (let ((writer (if binary?
-                      (if (eql format :pbm)
-                        #'write-bit-binary
-                        (curry #'write-number-binary maximum-value))
-                      (curry #'write-number-ascii maximum-value))))
-        (destructuring-bind (width height) (array-dimensions data)
-          (format-to-stream stream "P~D~%~D ~D~%"
-                            (magic-byte format binary?) width height)
-          (unless (eql format :pbm)
-            (format-to-stream stream "~D~%" maximum-value))
-          (dotimes (y height)
-            (dotimes (x width)
-              (let ((pixel (aref data x y)))
-                (ecase format
-                  (:pbm (funcall writer (- 1 pixel) stream))
-                  (:pgm (funcall writer pixel stream))
-                  (:ppm (progn (funcall writer (aref pixel 0) stream)
-                               (funcall writer (aref pixel 1) stream)
-                               (funcall writer (aref pixel 2) stream))))))
-            (flush-buffer)
-            (unless binary? (write-byte +line-feed+ stream))))))))
+
+;;;; Reading ------------------------------------------------------------------
+(defun read-bitmap-binary (stream &aux (buffer nil))
+  (flet ((read-bit (stream)
+           (when (null buffer)
+             (setf buffer (bits (read-byte stream))))
+           (pop buffer))
+         (flush-buffer ()
+           (setf buffer nil)))
+    (let* ((width (read-header-number stream))
+           (height (read-header-number stream))
+           (data (make-array (list width height) :element-type 'bit)))
+      (dotimes (y height)
+        (dotimes (x width)
+          (setf (aref data x y) (- 1 (read-bit stream))))
+        (flush-buffer))
+      (values data :pbm 1))))
+
+(defun read-bitmap-ascii (stream)
+  (flet ((read-bit (stream)
+           (skip-whitespace stream)
+           (byte-to-digit (read-byte stream))))
+    (let* ((width (read-header-number stream))
+           (height (read-header-number stream))
+           (data (make-array (list width height) :element-type 'bit)))
+      (dotimes (y height)
+        (dotimes (x width)
+          (setf (aref data x y) (- 1 (read-bit stream)))))
+      (values data :pbm 1))))
+
+(defun read-graymap (stream binary?)
+  (let* ((width (read-header-number stream))
+         (height (read-header-number stream))
+         (bit-depth (read-header-number stream))
+         (data (make-array (list width height)
+                 :element-type `(integer 0 ,bit-depth)))
+         (reader (if binary? #'read-byte #'read-raster-number)))
+    (dotimes (y height)
+      (dotimes (x width)
+        (setf (aref data x y) (funcall reader stream))))
+    (values data :pgm bit-depth)))
+
+(defun read-pixmap (stream binary?)
+  (let* ((width (read-header-number stream))
+         (height (read-header-number stream))
+         (bit-depth (read-header-number stream))
+         (data (make-array (list width height)
+                 :element-type `(simple-array (integer 0 ,bit-depth) (3))))
+         (reader (if binary? #'read-byte #'read-raster-number)))
+    (dotimes (y height)
+      (dotimes (x width)
+        (setf (aref data x y) (make-color (funcall reader stream)
+                                          (funcall reader stream)
+                                          (funcall reader stream)))))
+    (values data :ppm bit-depth)))
+
+
+(defun read-netpbm (stream format binary?)
+  (ecase format
+    (:pbm (if binary?
+            (read-bitmap-binary stream)
+            (read-bitmap-ascii stream)))
+    (:pgm (read-graymap stream binary?))
+    (:ppm (read-pixmap stream binary?))))
+
+
+;;;; Writing ------------------------------------------------------------------
+(defun write-bitmap-binary (data stream &aux (buffer 0) (buffer-length 0))
+  (labels ((write-buffer (stream)
+             (write-byte buffer stream)
+             (setf buffer 0 buffer-length 0))
+           (write-bit (bit stream)
+             (setf buffer (+ (ash buffer 1) bit))
+             (incf buffer-length)
+             (when (= buffer-length 8)
+               (write-buffer stream)))
+           (flush-buffer (stream)
+             (when (plusp buffer-length)
+               (setf buffer (ash buffer (- 8 buffer-length)))
+               (write-buffer stream))))
+    (destructuring-bind (width height) (array-dimensions data)
+      (format-to-stream stream "P~D~%~D ~D~%" (magic-byte :pbm t) width height)
+      (dotimes (y height)
+        (dotimes (x width)
+          (let ((pixel (aref data x y)))
+            (write-bit (- 1 pixel) stream)))
+        (flush-buffer stream)))))
+
+(defun write-bitmap-ascii (data stream)
+  (destructuring-bind (width height) (array-dimensions data)
+    (format-to-stream stream "P~D~%~D ~D~%" (magic-byte :pbm nil) width height)
+    (dotimes (y height)
+      (dotimes (x width)
+        (write-number-ascii (- 1 (aref data x y)) stream 1))
+      (write-line-feed stream))))
+
+(defun write-graymap (data stream binary? maximum-value)
+  (let ((writer (if binary?
+                  #'write-number-binary
+                  #'write-number-ascii)))
+    (destructuring-bind (width height) (array-dimensions data)
+      (format-to-stream stream "P~D~%~D ~D~%~D~%"
+                        (magic-byte :pgm binary?) width height maximum-value)
+      (dotimes (y height)
+        (dotimes (x width)
+          (funcall writer (aref data x y) stream maximum-value))
+        (unless binary? (write-line-feed stream))))))
+
+(defun write-pixmap (data stream binary? maximum-value)
+  (let ((writer (if binary?
+                  #'write-number-binary
+                  #'write-number-ascii)))
+    (destructuring-bind (width height) (array-dimensions data)
+      (format-to-stream stream "P~D~%~D ~D~%~D~%"
+                        (magic-byte :ppm binary?) width height maximum-value)
+      (dotimes (y height)
+        (dotimes (x width)
+          (let ((pixel (aref data x y)))
+            (funcall writer (aref pixel 0) stream maximum-value)
+            (funcall writer (aref pixel 1) stream maximum-value)
+            (funcall writer (aref pixel 2) stream maximum-value)))
+        (unless binary? (write-line-feed stream))))))
+
+
+(defun write-netpbm (data stream format binary? maximum-value)
+  (ecase format
+    (:pbm (if binary?
+            (write-bitmap-binary data stream)
+            (write-bitmap-ascii data stream)))
+    (:pgm (write-graymap data stream binary? maximum-value))
+    (:ppm (write-pixmap data stream binary? maximum-value))))
 
 
 ;;;; API ----------------------------------------------------------------------
@@ -273,7 +343,7 @@
     "Stream ~S is not an input stream." stream)
   (multiple-value-bind (format binary?)
       (file-format (read-magic-byte stream))
-    (read% (make-peekable-stream stream) format binary?)))
+    (read-netpbm (make-peekable-stream stream) format binary?)))
 
 (defun write-to-stream (stream data &key
                         (format :ppm)
@@ -309,7 +379,7 @@
   (if (eql format :pbm)
     (check-type maximum-value (eql 1))
     (check-type maximum-value (integer 1 *)))
-  (write% data stream format (eql :binary encoding) maximum-value)
+  (write-netpbm data stream format (eql :binary encoding) maximum-value)
   (values))
 
 

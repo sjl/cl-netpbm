@@ -1,5 +1,5 @@
-(defpackage :trivial-ppm
-  (:use :cl :trivial-ppm.quickutils)
+(defpackage :netpbm
+  (:use :cl :netpbm.quickutils)
   (:export
     :read-from-file
     :read-from-stream

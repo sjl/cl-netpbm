@@ -1,7 +1,7 @@
 (ql:quickload "cl-d-api")
 
 (defparameter *header*
-  "The following is a list of all user-facing parts of trivial-ppm.
+  "The following is a list of all user-facing parts of cl-netpbm.
 
 If there are backwards-incompatible changes to anything listed here, they will
 be noted in the changelog and the author will feel bad.
@@ -12,9 +12,9 @@ don't touch it.
 ")
 
 (d-api:generate-documentation
-  :trivial-ppm
+  :cl-netpbm
   #p"docs/03-reference.markdown"
-  (list "TRIVIAL-PPM")
+  (list :netpbm)
   *header*
   :title "API Reference")
 

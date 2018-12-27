@@ -1,15 +1,15 @@
-(asdf:defsystem :trivial-ppm
+(asdf:defsystem :cl-netpbm
   :description
-  "Common Lisp support for reading/writing the PPM/PGM/PBM image formats."
+  "Common Lisp support for reading/writing the netpbm image formats (PPM, PGM, and PBM)."
 
   :author "Steve Losh <steve@stevelosh.com>"
-  :homepage "https://sjl.bitbucket.io/trivial-ppm/"
+  :homepage "https://sjl.bitbucket.io/cl-netpbm/"
   :license "MIT/X11"
   :version "0.0.1"
 
   :depends-on ()
 
-  :in-order-to ((asdf:test-op (asdf:test-op :trivial-ppm/test)))
+  :in-order-to ((asdf:test-op (asdf:test-op :netpbm/test)))
 
   :serial t
   :components ((:module "vendor" :serial t
@@ -20,15 +20,12 @@
                 :components
                 ((:file "main")))))
 
-(asdf:defsystem :trivial-ppm/test
-  :description
-  "Test suite for trivial-ppm."
-
+(asdf:defsystem :cl-netpbm/test
+  :description "Test suite for cl-netpbm."
   :author "Steve Losh <steve@stevelosh.com>"
-
   :license "MIT/X11"
 
-  :depends-on (:trivial-ppm :1am)
+  :depends-on (:netpbm :1am)
 
   :serial t
   :components ((:file "package.test")
@@ -36,5 +33,5 @@
                 :serial t
                 :components ((:file "tests"))))
   :perform (asdf:test-op (op system)
-             (funcall (read-from-string "trivial-ppm/test:run-tests"))))
+             (funcall (read-from-string "netpbm/test:run-tests"))))
 

@@ -1,4 +1,4 @@
-(in-package :trivial-ppm/test)
+(in-package :netpbm/test)
 
 
 ;;;; Utils --------------------------------------------------------------------
@@ -31,25 +31,25 @@
 
 ;;;; Tests --------------------------------------------------------------------
 (define-test 1x1-black-ascii-pbm
-  (check (trivial-ppm:read-from-file "test/data/1x1-black.ascii.pbm")
+  (check (netpbm:read-from-file "test/data/1x1-black.ascii.pbm")
          '((0))
          :pbm
          1))
 
 (define-test 1x1-black-ascii-pgm
-  (check (trivial-ppm:read-from-file "test/data/1x1-black.ascii.pgm")
+  (check (netpbm:read-from-file "test/data/1x1-black.ascii.pgm")
          '((0))
          :pgm
          255))
 
 (define-test 1x1-black-ascii-ppm
-  (check (trivial-ppm:read-from-file "test/data/1x1-black.ascii.ppm")
+  (check (netpbm:read-from-file "test/data/1x1-black.ascii.ppm")
          `((,k))
          :ppm
          255))
 
 (define-test 4x3-rgb.ascii-ppm
-  (check (trivial-ppm:read-from-file "test/data/4x3-rgb.ascii.ppm")
+  (check (netpbm:read-from-file "test/data/4x3-rgb.ascii.ppm")
          `((,r ,r ,r ,r)
            (,g ,g ,g ,g)
            (,b ,b ,b ,b))
@@ -58,25 +58,25 @@
 
 
 (define-test 1x1-black-binary-pbm
-  (check (trivial-ppm:read-from-file "test/data/1x1-black.binary.pbm")
+  (check (netpbm:read-from-file "test/data/1x1-black.binary.pbm")
          '((0))
          :pbm
          1))
 
 (define-test 1x1-black-binary-pgm
-  (check (trivial-ppm:read-from-file "test/data/1x1-black.binary.pgm")
+  (check (netpbm:read-from-file "test/data/1x1-black.binary.pgm")
          '((0))
          :pgm
          255))
 
 (define-test 1x1-black-binary-ppm
-  (check (trivial-ppm:read-from-file "test/data/1x1-black.binary.ppm")
+  (check (netpbm:read-from-file "test/data/1x1-black.binary.ppm")
          `((,k))
          :ppm
          255))
 
 (define-test 4x3-rgb.binary-ppm
-  (check (trivial-ppm:read-from-file "test/data/4x3-rgb.binary.ppm")
+  (check (netpbm:read-from-file "test/data/4x3-rgb.binary.ppm")
          `((,r ,r ,r ,r)
            (,g ,g ,g ,g)
            (,b ,b ,b ,b))

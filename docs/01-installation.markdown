@@ -1,7 +1,7 @@
 Installation
 ============
 
-trivial-ppm is compatible with Quicklisp, but not *in* Quicklisp (yet?).  You
+cl-netpbm is compatible with Quicklisp, but not *in* Quicklisp (yet?).  You
 can clone the repository into your [Quicklisp local-projects][local] directory
 for now.
 

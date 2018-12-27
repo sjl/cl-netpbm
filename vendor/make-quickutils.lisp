@@ -10,4 +10,4 @@
                :transpose
 
                )
-  :package "TRIVIAL-PPM.QUICKUTILS")
+  :package "NETPBM.QUICKUTILS")
