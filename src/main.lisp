@@ -224,14 +224,32 @@
                                           (funcall reader stream)))))
     (values data :ppm bit-depth)))
 
+(defun read-texture (stream binary?)
+  (let* ((width (read-header-number stream))
+         (height (read-header-number stream))
+         (bit-depth (float (read-header-number stream) 1.0f0))
+         (data (make-array (* width height 3)
+                 :element-type '(single-float 0.0 1.0)))
+         (reader (if binary? #'read-byte #'read-raster-number)))
+    (loop :for y :from (1- height) :downto 0 :do
+          (dotimes (x width)
+            (let ((i (+ (* y width 3) (* 3 x))))
+              (setf (aref data (+ i 0)) (/ (funcall reader stream) bit-depth)
+                    (aref data (+ i 1)) (/ (funcall reader stream) bit-depth)
+                    (aref data (+ i 2)) (/ (funcall reader stream) bit-depth)))))
+    (values data width height)))
 
-(defun read-netpbm (stream format binary?)
-  (ecase format
-    (:pbm (if binary?
-            (read-bitmap-binary stream)
-            (read-bitmap-ascii stream)))
-    (:pgm (read-graymap stream binary?))
-    (:ppm (read-pixmap stream binary?))))
+
+(defun read-netpbm (stream format binary? texture?)
+  (if texture?
+    (ecase format
+      (:ppm (read-texture stream binary?)))
+    (ecase format
+      (:pbm (if binary?
+              (read-bitmap-binary stream)
+              (read-bitmap-ascii stream)))
+      (:pgm (read-graymap stream binary?))
+      (:ppm (read-pixmap stream binary?)))))
 
 
 ;;;; Writing ------------------------------------------------------------------
@@ -343,7 +361,31 @@
     "Stream ~S is not an input stream." stream)
   (multiple-value-bind (format binary?)
       (file-format (read-magic-byte stream))
-    (read-netpbm (make-peekable-stream stream) format binary?)))
+    (read-netpbm (make-peekable-stream stream) format binary? nil)))
+
+(defun read-texture-from-stream (stream)
+  "Read a PPM image file from `stream`, returning an OpenGL-style array and more.
+
+  `stream` must be a binary input stream, specifically of `(unsigned-byte 8)`s
+  unless you *really* know what you're doing.  The stream must contain a PPM
+  formatted image — PBM and PGM images are not supported.
+  
+  The primary return value will be an OpenGL-style array of type:
+
+    (simple-array (single-float 0.0 1.0) (* width height 3))
+
+  The vertical axis of the image will be flipped, which is what OpenGL expects.
+
+  Three values are returned: the array, the width, and the height.
+
+  "
+  (check-type stream stream)
+  (assert (input-stream-p stream) (stream)
+    "Stream ~S is not an input stream." stream)
+  (multiple-value-bind (format binary?)
+      (file-format (read-magic-byte stream))
+    (read-netpbm (make-peekable-stream stream) format binary? t)))
+
 
 (defun write-to-stream (stream data &key
                         (format :ppm)
@@ -402,6 +444,21 @@
   "
   (with-open-file (s path :direction :input :element-type '(unsigned-byte 8))
     (read-from-stream s)))
+
+(defun read-texture-from-file (path)
+  "Read a PPM image file from `path`, returning an OpenGL-style array and more.
+
+  The primary return value will be an OpenGL-style array of type:
+
+    (simple-array (single-float 0.0 1.0) (* width height 3))
+
+  The vertical axis of the image will be flipped, which is what OpenGL expects.
+
+  Three values are returned: the array, the width, and the height.
+
+  "
+  (with-open-file (s path :direction :input :element-type '(unsigned-byte 8))
+    (read-texture-from-stream s)))
 
 (defun write-to-file (path data &key
                       (if-exists nil if-exists-given)
