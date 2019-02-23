@@ -57,6 +57,42 @@ Read a PPM image file from `stream`, returning an array of pixels and more.
 
   
 
+### `READ-TEXTURE-FROM-FILE` (function)
+
+    (READ-TEXTURE-FROM-FILE PATH)
+
+Read a PPM image file from `path`, returning an OpenGL-style array and more.
+
+  The primary return value will be an OpenGL-style array of type:
+
+    (simple-array (single-float 0.0 1.0) (* width height 3))
+
+  The vertical axis of the image will be flipped, which is what OpenGL expects.
+
+  Three values are returned: the array, the width, and the height.
+
+  
+
+### `READ-TEXTURE-FROM-STREAM` (function)
+
+    (READ-TEXTURE-FROM-STREAM STREAM)
+
+Read a PPM image file from `stream`, returning an OpenGL-style array and more.
+
+  `stream` must be a binary input stream, specifically of `(unsigned-byte 8)`s
+  unless you *really* know what you're doing.  The stream must contain a PPM
+  formatted image — PBM and PGM images are not supported.
+  
+  The primary return value will be an OpenGL-style array of type:
+
+    (simple-array (single-float 0.0 1.0) (* width height 3))
+
+  The vertical axis of the image will be flipped, which is what OpenGL expects.
+
+  Three values are returned: the array, the width, and the height.
+
+  
+
 ### `WRITE-TO-FILE` (function)
 
     (WRITE-TO-FILE PATH DATA &KEY (IF-EXISTS NIL IF-EXISTS-GIVEN) (FORMAT :PPM) (ENCODING :BINARY)

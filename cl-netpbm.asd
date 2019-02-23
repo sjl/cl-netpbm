@@ -9,7 +9,7 @@
 
   :depends-on ()
 
-  :in-order-to ((asdf:test-op (asdf:test-op :netpbm/test)))
+  :in-order-to ((asdf:test-op (asdf:test-op :cl-netpbm/test)))
 
   :serial t
   :components ((:module "vendor" :serial t
@@ -25,7 +25,7 @@
   :author "Steve Losh <steve@stevelosh.com>"
   :license "MIT/X11"
 
-  :depends-on (:netpbm :1am)
+  :depends-on (:cl-netpbm :1am)
 
   :serial t
   :components ((:file "package.test")

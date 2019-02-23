@@ -2,20 +2,19 @@
 ;;;; See http://quickutil.org for details.
 
 ;;;; To regenerate:
-;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :SYMB :WITH-GENSYMS :TRANSPOSE) :ensure-package T :package "TRIVIAL-PPM.QUICKUTILS")
+;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :SYMB :WITH-GENSYMS :TRANSPOSE) :ensure-package T :package "NETPBM.QUICKUTILS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (find-package "TRIVIAL-PPM.QUICKUTILS")
-    (defpackage "TRIVIAL-PPM.QUICKUTILS"
+  (unless (find-package "NETPBM.QUICKUTILS")
+    (defpackage "NETPBM.QUICKUTILS"
       (:documentation "Package that contains Quickutil utility functions.")
       (:use #:cl))))
 
-(in-package "TRIVIAL-PPM.QUICKUTILS")
+(in-package "NETPBM.QUICKUTILS")
 
 (when (boundp '*utilities*)
-  (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION
-                                         :CURRY :MKSTR :SYMB :STRING-DESIGNATOR
-                                         :WITH-GENSYMS :TRANSPOSE))))
+  (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION :CURRY :MKSTR :SYMB
+                                         :STRING-DESIGNATOR :WITH-GENSYMS :TRANSPOSE))))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-gensym-list (length &optional (x "G"))
     "Returns a list of `length` gensyms, each generated as if with a call to `make-gensym`,

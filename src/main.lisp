@@ -363,28 +363,25 @@
       (file-format (read-magic-byte stream))
     (read-netpbm (make-peekable-stream stream) format binary? nil)))
 
-(defun read-texture-from-stream (stream)
-  "Read a PPM image file from `stream`, returning an OpenGL-style array and more.
+(defun read-from-file (path)
+  "Read a PPM image file from `path`, returning an array of pixels and more.
 
-  `stream` must be a binary input stream, specifically of `(unsigned-byte 8)`s
-  unless you *really* know what you're doing.  The stream must contain a PPM
-  formatted image — PBM and PGM images are not supported.
-  
-  The primary return value will be an OpenGL-style array of type:
+  The primary return value will be a 2D array with dimensions `(width height)`.
+  Each element of the array will be a single pixel whose type depends on the
+  image file format:
 
-    (simple-array (single-float 0.0 1.0) (* width height 3))
+  * PBM: `bit`
+  * PGM: `(integer 0 maximum-value)`
+  * PPM: `(simple-array (integer 0 maximum-value) (3))`
 
-  The vertical axis of the image will be flipped, which is what OpenGL expects.
+  Two other values are returned:
 
-  Three values are returned: the array, the width, and the height.
+  * The format of the image that was read (one of `:pbm`, `:pgm`, `:ppm`).
+  * The bit depth of the image.
 
   "
-  (check-type stream stream)
-  (assert (input-stream-p stream) (stream)
-    "Stream ~S is not an input stream." stream)
-  (multiple-value-bind (format binary?)
-      (file-format (read-magic-byte stream))
-    (read-netpbm (make-peekable-stream stream) format binary? t)))
+  (with-open-file (s path :direction :input :element-type '(unsigned-byte 8))
+    (read-from-stream s)))
 
 
 (defun write-to-stream (stream data &key
@@ -423,42 +420,6 @@
     (check-type maximum-value (integer 1 *)))
   (write-netpbm data stream format (eql :binary encoding) maximum-value)
   (values))
-
-
-(defun read-from-file (path)
-  "Read a PPM image file from `path`, returning an array of pixels and more.
-
-  The primary return value will be a 2D array with dimensions `(width height)`.
-  Each element of the array will be a single pixel whose type depends on the
-  image file format:
-
-  * PBM: `bit`
-  * PGM: `(integer 0 maximum-value)`
-  * PPM: `(simple-array (integer 0 maximum-value) (3))`
-
-  Two other values are returned:
-
-  * The format of the image that was read (one of `:pbm`, `:pgm`, `:ppm`).
-  * The bit depth of the image.
-
-  "
-  (with-open-file (s path :direction :input :element-type '(unsigned-byte 8))
-    (read-from-stream s)))
-
-(defun read-texture-from-file (path)
-  "Read a PPM image file from `path`, returning an OpenGL-style array and more.
-
-  The primary return value will be an OpenGL-style array of type:
-
-    (simple-array (single-float 0.0 1.0) (* width height 3))
-
-  The vertical axis of the image will be flipped, which is what OpenGL expects.
-
-  Three values are returned: the array, the width, and the height.
-
-  "
-  (with-open-file (s path :direction :input :element-type '(unsigned-byte 8))
-    (read-texture-from-stream s)))
 
 (defun write-to-file (path data &key
                       (if-exists nil if-exists-given)
@@ -500,3 +461,43 @@
       (with-open-file (s path :direction :output :element-type '(unsigned-byte 8))
         (write-it s))))
   (values))
+
+
+(defun read-texture-from-file (path)
+  "Read a PPM image file from `path`, returning an OpenGL-style array and more.
+
+  The primary return value will be an OpenGL-style array of type:
+
+    (simple-array (single-float 0.0 1.0) (* width height 3))
+
+  The vertical axis of the image will be flipped, which is what OpenGL expects.
+
+  Three values are returned: the array, the width, and the height.
+
+  "
+  (with-open-file (s path :direction :input :element-type '(unsigned-byte 8))
+    (read-texture-from-stream s)))
+
+(defun read-texture-from-stream (stream)
+  "Read a PPM image file from `stream`, returning an OpenGL-style array and more.
+
+  `stream` must be a binary input stream, specifically of `(unsigned-byte 8)`s
+  unless you *really* know what you're doing.  The stream must contain a PPM
+  formatted image — PBM and PGM images are not supported.
+  
+  The primary return value will be an OpenGL-style array of type:
+
+    (simple-array (single-float 0.0 1.0) (* width height 3))
+
+  The vertical axis of the image will be flipped, which is what OpenGL expects.
+
+  Three values are returned: the array, the width, and the height.
+
+  "
+  (check-type stream stream)
+  (assert (input-stream-p stream) (stream)
+    "Stream ~S is not an input stream." stream)
+  (multiple-value-bind (format binary?)
+      (file-format (read-magic-byte stream))
+    (read-netpbm (make-peekable-stream stream) format binary? t)))
+

@@ -36,6 +36,8 @@ $(apidocs): $(sourcefiles)
 
 docs/build/index.html: $(docfiles) $(apidocs) docs/title
 	cd docs && ~/.virtualenvs/d/bin/d
+	cd docs && rm -rf build/assets
+	cd docs && cp -R ./assets build/assets
 
 docs: docs/build/index.html
 
