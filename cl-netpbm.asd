@@ -25,7 +25,7 @@
   :author "Steve Losh <steve@stevelosh.com>"
   :license "MIT/X11"
 
-  :depends-on (:cl-netpbm :1am)
+  :depends-on (:cl-netpbm :1am :external-program)
 
   :serial t
   :components ((:file "package.test")

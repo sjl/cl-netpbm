@@ -24,7 +24,7 @@ test-ccl: vendor
 
 test-ecl: vendor
 	$(heading_printer) roman 'ECL'
-	ecl --load test/run.lisp
+	ecl -load test/run.lisp
 
 test-abcl: vendor
 	$(heading_printer) broadway 'ABCL'

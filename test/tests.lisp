@@ -151,12 +151,13 @@
                      :if-exists :supersede
                      :format original-format
                      :encoding :ascii)
-      (uiop:run-program (list "convert" "-format" (ecase original-format
-                                                    (:ppm "ppm")
-                                                    (:pgm "pgm")
-                                                    (:pbm "pbm"))
-                              "test/data/fuzz.convert.in"
-                              "test/data/fuzz.convert.out"))
+      (external-program:run "convert"
+                            (list "-format" (ecase original-format
+                                              (:ppm "ppm")
+                                              (:pgm "pgm")
+                                              (:pbm "pbm"))
+                                  "test/data/fuzz.convert.in"
+                                  "test/data/fuzz.convert.out"))
       (multiple-value-bind (new new-format)
           (read-from-file "test/data/fuzz.convert.out")
         (is (eql original-format new-format))
