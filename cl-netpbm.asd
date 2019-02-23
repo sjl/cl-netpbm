@@ -5,7 +5,7 @@
   :author "Steve Losh <steve@stevelosh.com>"
   :homepage "https://sjl.bitbucket.io/cl-netpbm/"
   :license "MIT/X11"
-  :version "0.0.1"
+  :version "1.0.0"
 
   :depends-on ()
 
