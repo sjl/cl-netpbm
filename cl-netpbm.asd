@@ -3,7 +3,7 @@
   "Common Lisp support for reading/writing the netpbm image formats (PPM, PGM, and PBM)."
 
   :author "Steve Losh <steve@stevelosh.com>"
-  :homepage "https://sjl.bitbucket.io/cl-netpbm/"
+  :homepage "https://docs.stevelosh.com/cl-netpbm/"
   :license "MIT/X11"
   :version "1.0.0"
 
