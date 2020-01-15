@@ -6,7 +6,7 @@ performance you should not use these formats (or this library).
 
 * **License:** MIT/X11
 * **Documentation:** <https://docs.stevelosh.com/cl-netpbm/>
-* **Mercurial:** <https://hg.sr.ht/~sjl/cl-netpbm/>
+* **Mercurial:** <https://hg.stevelosh.com/cl-netpbm/>
 * **Git:** <http://github.com/sjl/cl-netpbm/>
 
 cl-netpbm can be installed with Quicklisp: `(ql:quickload :cl-netpbm)`.
