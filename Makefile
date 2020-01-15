@@ -45,4 +45,5 @@ pubdocs: docs
 	hg -R ~/src/docs.stevelosh.com pull -u
 	rsync --delete -a ./docs/build/ ~/src/docs.stevelosh.com/cl-netpbm
 	hg -R ~/src/docs.stevelosh.com commit -Am 'cl-netpbm: Update site.'
+	hg -R ~/src/docs.stevelosh.com push upstream
 	hg -R ~/src/docs.stevelosh.com push
