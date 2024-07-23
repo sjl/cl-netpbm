@@ -163,6 +163,8 @@
   (loop :for i :from 7 :downto 0
         :collect (ldb (byte 1 i) byte)))
 
+(declaim (inline make-color))
+
 (defun make-color (r g b)
   (make-array 3
     :initial-contents (list r g b)
@@ -202,8 +204,7 @@
   (let* ((width (read-header-number stream))
          (height (read-header-number stream))
          (bit-depth (read-header-number stream))
-         (data (make-array (list width height)
-                 :element-type `(integer 0 ,bit-depth)))
+         (data (make-array (list width height) :element-type 'fixnum))
          (reader (if binary? #'read-byte #'read-raster-number)))
     (dotimes (y height)
       (dotimes (x width)
@@ -215,7 +216,8 @@
          (height (read-header-number stream))
          (bit-depth (read-header-number stream))
          (data (make-array (list width height)
-                 :element-type `(simple-array (integer 0 ,bit-depth) (3))))
+                 :element-type '(simple-array fixnum (3))
+                 :initial-element (make-color 0 0 0)))
          (reader (if binary? #'read-byte #'read-raster-number)))
     (dotimes (y height)
       (dotimes (x width)
